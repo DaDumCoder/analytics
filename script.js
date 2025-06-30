@@ -3,7 +3,7 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somn
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
-const contractStartBlock = 110820000; // Adjust if known
+const contractStartBlock = 49726370; // Adjust if known
 
 async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
   let allLogs = [];
