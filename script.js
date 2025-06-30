@@ -2,35 +2,66 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somn
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
+const contractStartBlock = 110140000; // Adjust if known
 
-async function fetchLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
+async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
   let allLogs = [];
+  const iface = new ethers.utils.Interface(abi);
+
   for (let i = startBlock; i <= endBlock; i += chunkSize) {
     const toBlock = Math.min(i + chunkSize - 1, endBlock);
     try {
       const logs = await provider.getLogs({
         address: contractAddress,
         fromBlock: i,
-        toBlock: toBlock,
+        toBlock,
         topics: [transferTopic]
       });
       console.log(`Fetched ${logs.length} logs from ${i} to ${toBlock}`);
+
+      // Decode logs
+      for (const log of logs) {
+        try {
+          const decoded = iface.parseLog(log);
+          log.decoded = decoded;
+        } catch (err) {
+          console.warn("Could not decode log:", err);
+        }
+      }
+
       allLogs.push(...logs);
     } catch (err) {
       console.error(`Error in block range ${i}–${toBlock}:`, err);
     }
   }
+
   return allLogs;
 }
 
 async function run() {
-  const latestBlock = await provider.getBlockNumber();
-  const blockTimeSec = 3; // Estimate
-  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = latestBlock - blocksIn30Days;
+  const abi = await fetch("abi.json").then(res => res.json());
 
-  const logs = await fetchLogsInChunks(startBlock, latestBlock);
+  const latestBlock = await provider.getBlockNumber();
+  const blockTimeSec = 3;
+  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
+  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
+
+  const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
+
+  // Total transfers:
   document.getElementById("transferCount").innerText = logs.length.toLocaleString();
+
+  // Unique txs:
+  const uniqueTxs = new Set(logs.map(l => l.transactionHash));
+  document.getElementById("txCount").innerText = uniqueTxs.size.toLocaleString();
+
+  // Total gas used:
+  let totalGas = 0;
+  for (const txHash of uniqueTxs) {
+    const receipt = await provider.getTransactionReceipt(txHash);
+    totalGas += receipt.gasUsed.toNumber();
+  }
+  document.getElementById("gasUsed").innerText = totalGas.toLocaleString();
 }
 
 run();
