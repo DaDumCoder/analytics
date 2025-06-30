@@ -3,250 +3,55 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somn
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
-const contractStartBlock = 49726370; // Adjust if known
+const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
 
-async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
-  let allLogs = [];
-  const iface = new ethers.utils.Interface(abi);
+const contractStartBlock = 51000000; // Replace with actual deployment block
+const chunkSize = 5000;
 
-  for (let i = startBlock; i <= endBlock; i += chunkSize) {
-    const toBlock = Math.min(i + chunkSize - 1, endBlock);
-    try {
-      const logs = await provider.getLogs({
-        address: contractAddress,
-        fromBlock: i,
-        toBlock,
-        topics: [transferTopic]
-      });
-      console.log(`Fetched ${logs.length} logs from ${i} to ${toBlock}`);
+async function fetchLogsInChunks(startBlock, endBlock, abi, topic, label) {
+    let allLogs = [];
+    const iface = new ethers.utils.Interface(abi);
 
-      for (const log of logs) {
+    for (let i = startBlock; i <= endBlock; i += chunkSize) {
+        const toBlock = Math.min(i + chunkSize - 1, endBlock);
         try {
-          const decoded = iface.parseLog(log);
-          log.decoded = decoded;
-        } catch (err) {
-          console.warn("Could not decode log:", err);
+            const logs = await provider.getLogs({
+                address: contractAddress,
+                fromBlock: i,
+                toBlock,
+                topics: [topic],
+            });
+            console.log(`Fetched ${logs.length} ${label} logs from ${i} to ${toBlock}`);
+            for (const log of logs) {
+                try {
+                    const decoded = iface.parseLog(log);
+                    log.decoded = decoded;
+                    allLogs.push(log);
+                } catch (e) {
+                    console.warn(`Failed to decode ${label} log:`, log, e);
+                }
+            }
+        } catch (e) {
+            console.error(`Error fetching ${label} logs from ${i} to ${toBlock}`, e);
         }
-      }
-
-      allLogs.push(...logs);
-    } catch (err) {
-      console.error(`Error in block range ${i}–${toBlock}:`, err);
     }
-  }
 
-  return allLogs;
+    return allLogs;
 }
 
-async function groupLogsByDay(logs) {
-  const logsByDay = {};
-  for (const log of logs) {
-    const block = await provider.getBlock(log.blockNumber);
-    const date = new Date(block.timestamp * 1000).toISOString().split("T")[0];
-    if (!logsByDay[date]) logsByDay[date] = 0;
-    logsByDay[date]++;
-  }
-  return logsByDay;
+async function loadAnalytics() {
+    const response = await fetch('./abi.json');
+    const abi = await response.json();
+
+    const latestBlock = await provider.getBlockNumber();
+
+    const transferLogs = await fetchLogsInChunks(contractStartBlock, latestBlock, abi, transferTopic, 'transfer');
+    const claimLogs = await fetchLogsInChunks(contractStartBlock, latestBlock, abi, claimTopic, 'claim');
+
+    document.getElementById('total-transactions').innerText = transferLogs.length + claimLogs.length;
+    document.getElementById('total-transfers').innerText = transferLogs.length;
+    document.getElementById('total-claims').innerText = claimLogs.length;
+    document.getElementById('gas-used').innerText = 'N/A'; // Optional: Add gas tracking if needed
 }
 
-function renderDailyChart(dataObj) {
-  const ctx = document.getElementById("dailyChart").getContext("2d");
-  const labels = Object.keys(dataObj).sort();
-  const values = labels.map(date => dataObj[date]);
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Transfers per Day",
-        data: values,
-        backgroundColor: "rgba(54, 162, 235, 0.6)"
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: "Date" } },
-        y: { title: { display: true, text: "Transfers" }, beginAtZero: true }
-      }
-    }
-  });
-}
-
-async function run() {
-  const abi = await fetch("abi.json").then(res => res.json());
-
-  const latestBlock = await provider.getBlockNumber();
-  const blockTimeSec = 3;
-  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = contractStartBlock;
-
-  const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
-
-  document.getElementById("transferCount").innerText = logs.length.toLocaleString();
-
-  const uniqueTxs = new Set(logs.map(l => l.transactionHash));
-  document.getElementById("txCount").innerText = uniqueTxs.size.toLocaleString();
-
-  let totalGas = 0;
-  for (const txHash of uniqueTxs) {
-    try {
-      const tx = await provider.getTransactionReceipt(txHash);
-      totalGas += tx.gasUsed.toNumber();
-    } catch (err) {
-      console.warn("Error getting gas for tx:", txHash, err);
-    }
-  }
-  document.getElementById("gasUsed").innerText = totalGas.toLocaleString();
-
-  const logsByDay = await groupLogsByDay(logs);
-  renderDailyChart(logsByDay);
-}
-
-run();
-
-
-async function fetchClaimLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
-  const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
-  const allLogs = [];
-
-  for (let i = startBlock; i <= endBlock; i += chunkSize) {
-    const toBlock = Math.min(i + chunkSize - 1, endBlock);
-    try {
-      const logs = await provider.getLogs({
-        address: contractAddress,
-        fromBlock: i,
-        toBlock,
-        topics: [claimTopic],
-      });
-      console.log(`Fetched ${logs.length} claim logs from ${i} to ${toBlock}`);
-      allLogs.push(...logs);
-    } catch (err) {
-      console.error(`Error fetching claim logs from ${i} to ${toBlock}:`, err);
-    }
-  }
-
-  return allLogs;
-}
-
-function renderClaimChart(dataObj) {
-  const ctx = document.getElementById("claimChart").getContext("2d");
-  const labels = Object.keys(dataObj).sort();
-  const values = labels.map(date => dataObj[date]);
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "Claims per Day",
-        data: values,
-        backgroundColor: "rgba(255, 99, 132, 0.6)"
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: "Date" } },
-        y: { title: { display: true, text: "Claims" }, beginAtZero: true }
-      }
-    }
-  });
-}
-
-async function groupLogsByDayFromLogs(logs) {
-  const byDay = {};
-  for (const log of logs) {
-    const block = await provider.getBlock(log.blockNumber);
-    const date = new Date(block.timestamp * 1000).toISOString().split("T")[0];
-    if (!byDay[date]) byDay[date] = 0;
-    byDay[date]++;
-  }
-  return byDay;
-}
-
-// Run claim analytics
-(async () => {
-  const abi = await fetch("abi.json").then(res => res.json());
-  const latestBlock = await provider.getBlockNumber();
-  const blockTimeSec = 3;
-  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = contractStartBlock;
-
-  const claimLogs = await fetchClaimLogsInChunks(startBlock, latestBlock);
-  document.getElementById("claimCount").innerText = `Total Claims: ${claimLogs.length}`;
-
-  const dailyClaimData = await groupLogsByDayFromLogs(claimLogs);
-  renderClaimChart(dailyClaimData);
-})();
-
-
-async function fetchAllLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
-  const allLogs = [];
-
-  for (let i = startBlock; i <= endBlock; i += chunkSize) {
-    const toBlock = Math.min(i + chunkSize - 1, endBlock);
-    try {
-      const logs = await provider.getLogs({
-        address: contractAddress,
-        fromBlock: i,
-        toBlock
-      });
-      console.log(`Fetched ${logs.length} all logs from ${i} to ${toBlock}`);
-      allLogs.push(...logs);
-    } catch (err) {
-      console.error(`Error fetching all logs from ${i} to ${toBlock}:`, err);
-    }
-  }
-
-  return allLogs;
-}
-
-function renderAllTxChart(dataObj) {
-  const ctx = document.getElementById("allTxChart").getContext("2d");
-  const labels = Object.keys(dataObj).sort();
-  const values = labels.map(date => dataObj[date]);
-
-  new Chart(ctx, {
-    type: "bar",
-    data: {
-      labels,
-      datasets: [{
-        label: "All Interactions per Day",
-        data: values,
-        backgroundColor: "rgba(153, 102, 255, 0.6)"
-      }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: "Date" } },
-        y: { title: { display: true, text: "Transactions" }, beginAtZero: true }
-      }
-    }
-  });
-}
-
-// Fetch all txs & render
-(async () => {
-  const latestBlock = await provider.getBlockNumber();
-  const startBlock = 49726370;
-
-  
-  const allLogs = await fetchAllLogsInChunks(startBlock, latestBlock);
-  if (allLogs.length === 0) {
-    document.getElementById("allTxCount").innerText = "Total Interactions: 0 (no logs found)";
-  } else {
-    console.log("Fetched ALL logs:", allLogs.map(log => ({
-      blockNumber: log.blockNumber,
-      tx: log.transactionHash,
-      topic0: log.topics[0]
-    })));
-  }
-
-  document.getElementById("allTxCount").innerText = `Total Interactions: ${allLogs.length}`;
-
-  const allByDay = await groupLogsByDayFromLogs(allLogs);
-  renderAllTxChart(allByDay);
-})();
+window.onload = loadAnalytics;
