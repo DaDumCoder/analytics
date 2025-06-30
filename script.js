@@ -1,7 +1,7 @@
 
 const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somnia_testnet/6e3fd81558cf77b928b06b38e9409b4677b637118114e83364486294d5ff4811");
 
-const contractAddress = "0xd3A6A3f851eC843df96860aeB2086267b47249e8";
+const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
 const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
 
