@@ -233,7 +233,18 @@ function renderAllTxChart(dataObj) {
   const latestBlock = await provider.getBlockNumber();
   const startBlock = 49726370;
 
+  
   const allLogs = await fetchAllLogsInChunks(startBlock, latestBlock);
+  if (allLogs.length === 0) {
+    document.getElementById("allTxCount").innerText = "Total Interactions: 0 (no logs found)";
+  } else {
+    console.log("Fetched ALL logs:", allLogs.map(log => ({
+      blockNumber: log.blockNumber,
+      tx: log.transactionHash,
+      topic0: log.topics[0]
+    })));
+  }
+
   document.getElementById("allTxCount").innerText = `Total Interactions: ${allLogs.length}`;
 
   const allByDay = await groupLogsByDayFromLogs(allLogs);
