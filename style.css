@@ -1,0 +1,13 @@
+body {
+  font-family: sans-serif;
+  background: #f9f9f9;
+  padding: 2em;
+}
+
+#info {
+  background: white;
+  padding: 1em;
+  border-radius: 8px;
+  width: 400px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
