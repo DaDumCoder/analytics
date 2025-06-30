@@ -1,20 +1,36 @@
-
 <!DOCTYPE html>
 <html>
 <head>
   <title>LIFE Token Analytics</title>
+  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.ethers.io/lib/ethers-5.2.umd.min.js"></script>
 </head>
+
 <body>
   <h1>LIFE Token Analytics (Somnia Testnet)</h1>
-  <div>
-    <p>Total Transactions: <span id="totalTxns">Loading...</span></p>
-    <p>Total Transfers: <span id="totalTransfers">Loading...</span></p>
-    <p>Total Claims: <span id="totalClaims">Loading...</span></p>
+  <div id="info">
+    <p>Total Transactions: <span id="txCount">Loading...</span></p>
+    <p>Total Transfers: <span id="transferCount">Loading...</span></p>
+    <p>Gas Used: <span id="gasUsed">Loading...</span></p>
+  <p id="allTxCount"><em>Loading total interactions...</em></p>
+<p id="claimCount">Total Claims: Loading...</p></div>
+  <script src="script.js"></script>
+
+  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
+    <canvas id="dailyChart"></canvas>
   </div>
-  <canvas id="transferChart"></canvas>
-  <canvas id="claimChart"></canvas>
-  <script src="js/script.js"></script>
+
+  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
+    <canvas id="claimChart"></canvas>
+  </div>
+
+  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
+    <canvas id="allTxChart"></canvas>
+  </div>
 </body>
+
+
+
 </html>
