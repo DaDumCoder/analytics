@@ -1,36 +1,19 @@
+
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>LIFE Token Analytics</title>
-  <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <title>LIFE Token Analytics (Somnia Testnet)</title>
 </head>
-
 <body>
-  <h1>LIFE Token Analytics (Somnia Testnet)</h1>
-  <div id="info">
-    <p>Total Transactions: <span id="txCount">Loading...</span></p>
-    <p>Total Transfers: <span id="transferCount">Loading...</span></p>
-    <p>Gas Used: <span id="gasUsed">Loading...</span></p>
-  <p id="allTxCount"><em>Loading total interactions...</em></p>
-<p id="claimCount">Total Claims: Loading...</p></div>
-  <script src="script.js"></script>
-
-  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
-    <canvas id="dailyChart"></canvas>
-  </div>
-
-  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
-    <canvas id="claimChart"></canvas>
-  </div>
-
-  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
-    <canvas id="allTxChart"></canvas>
-  </div>
+    <h1>LIFE Token Analytics (Somnia Testnet)</h1>
+    <div style="border: 1px solid #ccc; padding: 20px; width: 300px;">
+        <p>Total Transactions: <span id="totalTransactions">Loading...</span></p>
+        <p>Total Transfers: <span id="totalTransfers">Loading...</span></p>
+        <p>Gas Used: <span id="totalGasUsed">Loading...</span></p>
+        <p><i>Loading total interactions...</i> <span id="totalInteractions"></span></p>
+        <p>Total Claims: <span id="totalClaims">Loading...</span></p>
+    </div>
+    <script src="script.js"></script>
 </body>
-
-
-
 </html>
