@@ -1,4 +1,4 @@
-const provider = new ethers.providers.JsonRpcProvider("https://shannon-rpc.somnia.network");
+const provider = new ethers.providers.JsonRpcProvider("https://50312.rpc.thirdweb.com");
 
 async function loadData() {
   const txCount = await provider.getTransactionCount("0x696ee979e8CC1D5a2CA7778606a3269C00978346");
