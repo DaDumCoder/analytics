@@ -40,8 +40,6 @@ async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
 
 async function run() {
 
-  const logsByDay = await groupLogsByDay(logs);
-  renderDailyChart(logsByDay);
 
   const abi = await fetch("abi.json").then(res => res.json());
 
@@ -51,6 +49,9 @@ async function run() {
   const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
 
   const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
+
+  const logsByDay = await groupLogsByDay(logs);
+  renderDailyChart(logsByDay);
 
   // Total transfers:
   document.getElementById("transferCount").innerText = logs.length.toLocaleString();
