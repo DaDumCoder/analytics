@@ -39,6 +39,10 @@ async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
 }
 
 async function run() {
+
+  const logsByDay = await groupLogsByDay(logs);
+  renderDailyChart(logsByDay);
+
   const abi = await fetch("abi.json").then(res => res.json());
 
   const latestBlock = await provider.getBlockNumber();
@@ -65,3 +69,43 @@ async function run() {
 }
 
 run();
+
+// ======== DAILY TRANSFER CHART ==========
+
+// Group logs by day
+async function groupLogsByDay(logs) {
+  const logsByDay = {};
+  for (const log of logs) {
+    const block = await provider.getBlock(log.blockNumber);
+    const date = new Date(block.timestamp * 1000).toISOString().split("T")[0];
+    if (!logsByDay[date]) logsByDay[date] = 0;
+    logsByDay[date]++;
+  }
+  return logsByDay;
+}
+
+// Render chart
+function renderDailyChart(dataObj) {
+  const ctx = document.getElementById("dailyChart").getContext("2d");
+  const labels = Object.keys(dataObj).sort();
+  const values = labels.map(date => dataObj[date]);
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Transfers per Day",
+        data: values,
+        backgroundColor: "rgba(54, 162, 235, 0.6)"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: "Date" } },
+        y: { title: { display: true, text: "Transfers" }, beginAtZero: true }
+      }
+    }
+  });
+}

@@ -4,7 +4,10 @@
   <title>LIFE Token Analytics</title>
   <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
   <link rel="stylesheet" href="style.css" />
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
+
 <body>
   <h1>LIFE Token Analytics (Somnia Testnet)</h1>
   <div id="info">
@@ -13,5 +16,10 @@
     <p>Gas Used: <span id="gasUsed">Loading...</span></p>
   </div>
   <script src="script.js"></script>
+
+  <div style="width: 100%; max-width: 800px; margin: 2rem auto;">
+    <canvas id="dailyChart"></canvas>
+  </div>
 </body>
+
 </html>
