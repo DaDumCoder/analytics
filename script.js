@@ -5,53 +5,44 @@ const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
 const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
 
-const contractStartBlock = 51000000; // Replace with actual deployment block
-const chunkSize = 5000;
-
-async function fetchLogsInChunks(startBlock, endBlock, abi, topic, label) {
-    let allLogs = [];
+async function fetchLogs(topic, abi, label) {
     const iface = new ethers.utils.Interface(abi);
+    const logs = await provider.getLogs({
+        address: contractAddress,
+        fromBlock: "earliest",
+        toBlock: "latest",
+        topics: [topic]
+    });
 
-    for (let i = startBlock; i <= endBlock; i += chunkSize) {
-        const toBlock = Math.min(i + chunkSize - 1, endBlock);
+    const decodedLogs = [];
+    for (const log of logs) {
         try {
-            const logs = await provider.getLogs({
-                address: contractAddress,
-                fromBlock: i,
-                toBlock,
-                topics: [topic],
-            });
-            console.log(`Fetched ${logs.length} ${label} logs from ${i} to ${toBlock}`);
-            for (const log of logs) {
-                try {
-                    const decoded = iface.parseLog(log);
-                    log.decoded = decoded;
-                    allLogs.push(log);
-                } catch (e) {
-                    console.warn(`Failed to decode ${label} log:`, log, e);
-                }
-            }
+            const decoded = iface.parseLog(log);
+            decodedLogs.push(decoded);
         } catch (e) {
-            console.error(`Error fetching ${label} logs from ${i} to ${toBlock}`, e);
+            console.warn(`Failed to decode ${label} log`, log, e);
         }
     }
 
-    return allLogs;
+    console.log(`Fetched ${decodedLogs.length} ${label} logs`);
+    return decodedLogs;
 }
 
 async function loadAnalytics() {
-    const response = await fetch('./abi.json');
-    const abi = await response.json();
+    try {
+        const response = await fetch('./abi.json');
+        const abi = await response.json();
 
-    const latestBlock = await provider.getBlockNumber();
+        const transfers = await fetchLogs(transferTopic, abi, 'transfer');
+        const claims = await fetchLogs(claimTopic, abi, 'claim');
 
-    const transferLogs = await fetchLogsInChunks(contractStartBlock, latestBlock, abi, transferTopic, 'transfer');
-    const claimLogs = await fetchLogsInChunks(contractStartBlock, latestBlock, abi, claimTopic, 'claim');
-
-    document.getElementById('total-transactions').innerText = transferLogs.length + claimLogs.length;
-    document.getElementById('total-transfers').innerText = transferLogs.length;
-    document.getElementById('total-claims').innerText = claimLogs.length;
-    document.getElementById('gas-used').innerText = 'N/A'; // Optional: Add gas tracking if needed
+        document.getElementById('total-transactions').innerText = transfers.length + claims.length;
+        document.getElementById('total-transfers').innerText = transfers.length;
+        document.getElementById('total-claims').innerText = claims.length;
+        document.getElementById('gas-used').innerText = 'N/A';
+    } catch (e) {
+        console.error('Error loading analytics:', e);
+    }
 }
 
 window.onload = loadAnalytics;
