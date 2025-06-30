@@ -1,3 +1,4 @@
+
 const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somnia_testnet/6e3fd81558cf77b928b06b38e9409b4677b637118114e83364486294d5ff4811");
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
@@ -19,7 +20,6 @@ async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
       });
       console.log(`Fetched ${logs.length} logs from ${i} to ${toBlock}`);
 
-      // Decode logs
       for (const log of logs) {
         try {
           const decoded = iface.parseLog(log);
@@ -38,42 +38,6 @@ async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
   return allLogs;
 }
 
-async function run() {
-
-
-  const abi = await fetch("abi.json").then(res => res.json());
-
-  const latestBlock = await provider.getBlockNumber();
-  const blockTimeSec = 3;
-  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
-
-  const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
-
-  const logsByDay = await groupLogsByDay(logs);
-  renderDailyChart(logsByDay);
-
-  // Total transfers:
-  document.getElementById("transferCount").innerText = logs.length.toLocaleString();
-
-  // Unique txs:
-  const uniqueTxs = new Set(logs.map(l => l.transactionHash));
-  document.getElementById("txCount").innerText = uniqueTxs.size.toLocaleString();
-
-  // Total gas used:
-  let totalGas = 0;
-  for (const txHash of uniqueTxs) {
-    const receipt = await provider.getTransactionReceipt(txHash);
-    totalGas += receipt.gasUsed.toNumber();
-  }
-  document.getElementById("gasUsed").innerText = totalGas.toLocaleString();
-}
-
-run();
-
-// ======== DAILY TRANSFER CHART ==========
-
-// Group logs by day
 async function groupLogsByDay(logs) {
   const logsByDay = {};
   for (const log of logs) {
@@ -85,7 +49,6 @@ async function groupLogsByDay(logs) {
   return logsByDay;
 }
 
-// Render chart
 function renderDailyChart(dataObj) {
   const ctx = document.getElementById("dailyChart").getContext("2d");
   const labels = Object.keys(dataObj).sort();
@@ -110,3 +73,35 @@ function renderDailyChart(dataObj) {
     }
   });
 }
+
+async function run() {
+  const abi = await fetch("abi.json").then(res => res.json());
+
+  const latestBlock = await provider.getBlockNumber();
+  const blockTimeSec = 3;
+  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
+  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
+
+  const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
+
+  document.getElementById("transferCount").innerText = logs.length.toLocaleString();
+
+  const uniqueTxs = new Set(logs.map(l => l.transactionHash));
+  document.getElementById("txCount").innerText = uniqueTxs.size.toLocaleString();
+
+  let totalGas = 0;
+  for (const txHash of uniqueTxs) {
+    try {
+      const tx = await provider.getTransactionReceipt(txHash);
+      totalGas += tx.gasUsed.toNumber();
+    } catch (err) {
+      console.warn("Error getting gas for tx:", txHash, err);
+    }
+  }
+  document.getElementById("gasUsed").innerText = totalGas.toLocaleString();
+
+  const logsByDay = await groupLogsByDay(logs);
+  renderDailyChart(logsByDay);
+}
+
+run();
