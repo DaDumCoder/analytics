@@ -3,7 +3,7 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somn
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
-const contractStartBlock = 49726370; // Adjust if known
+const contractStartBlock = 110820000; // Adjust if known
 
 async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
   let allLogs = [];
@@ -179,4 +179,63 @@ async function groupLogsByDayFromLogs(logs) {
 
   const dailyClaimData = await groupLogsByDayFromLogs(claimLogs);
   renderClaimChart(dailyClaimData);
+})();
+
+
+async function fetchAllLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
+  const allLogs = [];
+
+  for (let i = startBlock; i <= endBlock; i += chunkSize) {
+    const toBlock = Math.min(i + chunkSize - 1, endBlock);
+    try {
+      const logs = await provider.getLogs({
+        address: contractAddress,
+        fromBlock: i,
+        toBlock
+      });
+      console.log(`Fetched ${logs.length} all logs from ${i} to ${toBlock}`);
+      allLogs.push(...logs);
+    } catch (err) {
+      console.error(`Error fetching all logs from ${i} to ${toBlock}:`, err);
+    }
+  }
+
+  return allLogs;
+}
+
+function renderAllTxChart(dataObj) {
+  const ctx = document.getElementById("allTxChart").getContext("2d");
+  const labels = Object.keys(dataObj).sort();
+  const values = labels.map(date => dataObj[date]);
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "All Interactions per Day",
+        data: values,
+        backgroundColor: "rgba(153, 102, 255, 0.6)"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: "Date" } },
+        y: { title: { display: true, text: "Transactions" }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// Fetch all txs & render
+(async () => {
+  const latestBlock = await provider.getBlockNumber();
+  const startBlock = 49726370;
+
+  const allLogs = await fetchAllLogsInChunks(startBlock, latestBlock);
+  document.getElementById("allTxCount").innerText = `Total Interactions: ${allLogs.length}`;
+
+  const allByDay = await groupLogsByDayFromLogs(allLogs);
+  renderAllTxChart(allByDay);
 })();
