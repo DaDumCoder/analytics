@@ -24,7 +24,7 @@ async function fetchLogs(topic, abi, label) {
         }
     }
 
-    console.log(`Fetched ${decodedLogs.length} ${label} logs`);
+    console.log(`Fetched ${decodedLogs.length} ${label} logs`, decodedLogs);
     return decodedLogs;
 }
 
