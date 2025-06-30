@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
-    const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somnia_testnet");
-    const contractAddress = "0xd3a6a3f851ec843df96860eab2086267b47249e8"; // Your token contract
+    const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somnia_testnet/6e3fd81558cf77b928b06b38e9409b4677b637118114e83364486294d5ff4811");
+    const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346"; // Your token contract
     const abi = await fetch('abi.json').then(res => res.json());
     const contract = new ethers.Contract(contractAddress, abi, provider);
 
@@ -10,7 +10,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     const topicTransfer = ethers.utils.id("Transfer(address,address,uint256)");
-    const topicClaim = ethers.utils.id("Claim(address,uint256)"); // Use actual event name if different
+    const topicClaim = ethers.utils.id("claim(address,uint256)"); // Use actual event name if different
 
     try {
         const latestBlock = await provider.getBlockNumber();
