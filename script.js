@@ -253,7 +253,7 @@ function renderAllTxChart(dataObj) {
 
 
 async function fetchClaimLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
-  const claimTopic = ethers.utils.id("TokensClaimed(address,address,uint256)");
+  const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
   const allClaimLogs = [];
 
   for (let i = startBlock; i <= endBlock; i += chunkSize) {
