@@ -250,3 +250,76 @@ function renderAllTxChart(dataObj) {
   const allByDay = await groupLogsByDayFromLogs(allLogs);
   renderAllTxChart(allByDay);
 })();
+
+
+async function fetchClaimLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
+  const claimTopic = ethers.utils.id("TokensClaimed(address,address,uint256)");
+  const allClaimLogs = [];
+
+  for (let i = startBlock; i <= endBlock; i += chunkSize) {
+    const toBlock = Math.min(i + chunkSize - 1, endBlock);
+    try {
+      const logs = await provider.getLogs({
+        address: contractAddress,
+        fromBlock: i,
+        toBlock,
+        topics: [claimTopic]
+      });
+      console.log(`Fetched ${logs.length} claim logs from ${i} to ${toBlock}`);
+      allClaimLogs.push(...logs);
+    } catch (err) {
+      console.error(`Error fetching claim logs from ${i} to ${toBlock}:`, err);
+    }
+  }
+
+  return allClaimLogs;
+}
+
+async function groupLogsByDayFromLogs(logs) {
+  const byDay = {};
+  for (const log of logs) {
+    const block = await provider.getBlock(log.blockNumber);
+    const date = new Date(block.timestamp * 1000).toISOString().split("T")[0];
+    if (!byDay[date]) byDay[date] = 0;
+    byDay[date]++;
+  }
+  return byDay;
+}
+
+function renderClaimChart(dataObj) {
+  const ctx = document.getElementById("claimChart").getContext("2d");
+  const labels = Object.keys(dataObj).sort();
+  const values = labels.map(date => dataObj[date]);
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Claims per Day",
+        data: values,
+        backgroundColor: "rgba(255, 99, 132, 0.6)"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: "Date" } },
+        y: { title: { display: true, text: "Claims" }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// Add claim analytics to run
+(async () => {
+  const abi = await fetch("abi.json").then(res => res.json());
+  const latestBlock = await provider.getBlockNumber();
+  const startBlock = 49726370;
+
+  const claimLogs = await fetchClaimLogsInChunks(startBlock, latestBlock);
+  document.getElementById("claimCount").innerText = `Total Claims: ${claimLogs.length}`;
+
+  const groupedClaims = await groupLogsByDayFromLogs(claimLogs);
+  renderClaimChart(groupedClaims);
+})();
