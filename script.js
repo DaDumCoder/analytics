@@ -3,7 +3,7 @@ const provider = new ethers.providers.JsonRpcProvider("https://rpc.ankr.com/somn
 
 const contractAddress = "0x696ee979e8CC1D5a2CA7778606a3269C00978346";
 const transferTopic = ethers.utils.id("Transfer(address,address,uint256)");
-const contractStartBlock = 110140000; // Adjust if known
+const contractStartBlock = 110820000; // Adjust if known
 
 async function fetchLogsInChunks(startBlock, endBlock, abi, chunkSize = 5000) {
   let allLogs = [];
@@ -80,7 +80,7 @@ async function run() {
   const latestBlock = await provider.getBlockNumber();
   const blockTimeSec = 3;
   const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
+  const startBlock = contractStartBlock;
 
   const logs = await fetchLogsInChunks(startBlock, latestBlock, abi);
 
@@ -107,20 +107,27 @@ async function run() {
 run();
 
 
-async function fetchClaimLogs(fromBlock, toBlock) {
+async function fetchClaimLogsInChunks(startBlock, endBlock, chunkSize = 5000) {
   const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
-  try {
-    const logs = await provider.getLogs({
-      address: contractAddress,
-      fromBlock,
-      toBlock,
-      topics: [claimTopic],
-    });
-    return logs;
-  } catch (err) {
-    console.error("Error fetching claim logs:", err);
-    return [];
+  const allLogs = [];
+
+  for (let i = startBlock; i <= endBlock; i += chunkSize) {
+    const toBlock = Math.min(i + chunkSize - 1, endBlock);
+    try {
+      const logs = await provider.getLogs({
+        address: contractAddress,
+        fromBlock: i,
+        toBlock,
+        topics: [claimTopic],
+      });
+      console.log(`Fetched ${logs.length} claim logs from ${i} to ${toBlock}`);
+      allLogs.push(...logs);
+    } catch (err) {
+      console.error(`Error fetching claim logs from ${i} to ${toBlock}:`, err);
+    }
   }
+
+  return allLogs;
 }
 
 function renderClaimChart(dataObj) {
@@ -159,15 +166,15 @@ async function groupLogsByDayFromLogs(logs) {
   return byDay;
 }
 
-// Append claim tracking to run()
+// Run claim analytics
 (async () => {
   const abi = await fetch("abi.json").then(res => res.json());
   const latestBlock = await provider.getBlockNumber();
   const blockTimeSec = 3;
   const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
-  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
+  const startBlock = contractStartBlock;
 
-  const claimLogs = await fetchClaimLogs(startBlock, latestBlock);
+  const claimLogs = await fetchClaimLogsInChunks(startBlock, latestBlock);
   document.getElementById("claimCount").innerText = `Total Claims: ${claimLogs.length}`;
 
   const dailyClaimData = await groupLogsByDayFromLogs(claimLogs);
