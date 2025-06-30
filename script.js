@@ -105,3 +105,71 @@ async function run() {
 }
 
 run();
+
+
+async function fetchClaimLogs(fromBlock, toBlock) {
+  const claimTopic = ethers.utils.id("TokensClaimed(uint256,address,address,uint256,uint256)");
+  try {
+    const logs = await provider.getLogs({
+      address: contractAddress,
+      fromBlock,
+      toBlock,
+      topics: [claimTopic],
+    });
+    return logs;
+  } catch (err) {
+    console.error("Error fetching claim logs:", err);
+    return [];
+  }
+}
+
+function renderClaimChart(dataObj) {
+  const ctx = document.getElementById("claimChart").getContext("2d");
+  const labels = Object.keys(dataObj).sort();
+  const values = labels.map(date => dataObj[date]);
+
+  new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [{
+        label: "Claims per Day",
+        data: values,
+        backgroundColor: "rgba(255, 99, 132, 0.6)"
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: { title: { display: true, text: "Date" } },
+        y: { title: { display: true, text: "Claims" }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+async function groupLogsByDayFromLogs(logs) {
+  const byDay = {};
+  for (const log of logs) {
+    const block = await provider.getBlock(log.blockNumber);
+    const date = new Date(block.timestamp * 1000).toISOString().split("T")[0];
+    if (!byDay[date]) byDay[date] = 0;
+    byDay[date]++;
+  }
+  return byDay;
+}
+
+// Append claim tracking to run()
+(async () => {
+  const abi = await fetch("abi.json").then(res => res.json());
+  const latestBlock = await provider.getBlockNumber();
+  const blockTimeSec = 3;
+  const blocksIn30Days = Math.floor((30 * 24 * 60 * 60) / blockTimeSec);
+  const startBlock = Math.max(latestBlock - blocksIn30Days, contractStartBlock);
+
+  const claimLogs = await fetchClaimLogs(startBlock, latestBlock);
+  document.getElementById("claimCount").innerText = `Total Claims: ${claimLogs.length}`;
+
+  const dailyClaimData = await groupLogsByDayFromLogs(claimLogs);
+  renderClaimChart(dailyClaimData);
+})();
